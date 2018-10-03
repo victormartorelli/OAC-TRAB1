@@ -1,3 +1,4 @@
+#walyson maxwel dias leite 140087851
 .data
 	memoria2: .word 270794752
 	memoria: .word 269746176#Endereco de memoria final do bloco exibido no bitmap display
@@ -21,8 +22,8 @@
 
 main:
 
-lw $s0,memoria2 #endereÁo base do heap
-lw $s3,memoria #endereÁo base do heap
+lw $s0,memoria2 #endere√ßo base do heap
+lw $s3,memoria #endere√ßo base do heap
 lw $s1,screen_size#Tamanho de bytes do display
 sub $s0,$s0,72 #desconta do endereco inicial do heap a quantidade de bytes utiliza para header
 sub $s3,$s3,72 #desconta do endereco inicial do heap a quantidade de bytes utiliza para header
@@ -237,7 +238,7 @@ add $t1,$t1,$t5 # t1= t1+t2+T3+t4+t5...+..
 div $t1,$t1,7 	#t1 = t1/7 , Cauculando a media dos valores dos pixels
 sb $t1,0($t0)	# Armazena o valor encontrado no lugar buffer para depois subistituir a word antiga
 
-####################3 Indiferente, esse byte È inutil mas deve ser lido
+####################3 Indiferente, esse byte √© inutil mas deve ser lido
 
 lbu $t1,-1($t6)
 lbu $t2,3($t6)
@@ -328,20 +329,20 @@ set_largura:
 
 	lw $t3,largura #tamanho da largura que servira de contagem de uma lateral a outra
 	add $t2,$t2,$t3 #adiciona mais 2048 para ir para a base lateral esquerda acima
-	move $t1, $s0 #recupera o endereÁo base do heap
+	move $t1, $s0 #recupera o endere√ßo base do heap
 	sub $t1,$t1,$t2 #base do heap - a base lateral = t1-t2. Base da lateral esquerda atual
 	b leitura_imagem
 
 abre_imagem:
 
-	li $v0,13#Prepara $v0 para a syscall que abrir· a imagem
+	li $v0,13#Prepara $v0 para a syscall que abrir√° a imagem
 	li $a1, 0        #flags (0-leitura,1-escrita)
-	la $a0,nome_da_imagem#t0 recebe o endereco de memoria do asciiz noma_da_imagem que ser· aberto
+	la $a0,nome_da_imagem#t0 recebe o endereco de memoria do asciiz noma_da_imagem que ser√° aberto
 	syscall #realiza a leitura
-	blt $v0,$zero,falha_leitura_imagem # O file descriptor e carregado em $v0. Se ocorreu erro durante a abertura do arquivo $v0<0 e È feito um jump 
+	blt $v0,$zero,falha_leitura_imagem # O file descriptor e carregado em $v0. Se ocorreu erro durante a abertura do arquivo $v0<0 e √© feito um jump 
 	move $s2,$v0 #Se o arquivo foi aberto corretamente s0 recebe o file descriptor
 	addi $s2,$s2,0
-	##PreparaÁcoes para a leitura_imagem
+	##Prepara√ßcoes para a leitura_imagem
 	
 	move $a0, $s2     # file descriptor
 	la $a1, buffer #local em que o pixel lido sera salvo
@@ -359,7 +360,7 @@ leitura_imagem:#Uma vez que o arquvo foi aberto corretamente parte-se para a lei
 # $a1,$a2,a3,$t1 definidos no abre_imagem serao utiliados aqui
 # $a1 local em que o pixel lido sera salvo
 # $a2 determina a largura do buffer,ou seja, 3 caracteres serao lidos por vez
-# $a3 numero de bytes a serem lidos , se o arquivo possui 512x512 ent„o serao 262144
+# $a3 numero de bytes a serem lidos , se o arquivo possui 512x512 ent√£o serao 262144
 # $t1 Contem o endereco base do heap
 
 	li $v0,14 #Leitura do primeiro pixel da imagem e armazenamento no buffer,utiliza a1,a2 como argumentos
