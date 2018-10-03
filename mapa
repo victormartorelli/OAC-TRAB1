@@ -10,6 +10,7 @@
 	mensagem_blur2: .asciiz "Escolha a intensidade do blur 1-5 * Quanto maior a intensidade, mais demorado"
 	mensagem_edge: .asciiz "2 - Aplicar edge extractor"
 	mensagem_binarizacao: .asciiz "3 - Aplicar Binarizacao por limiar"
+	mensagem_binarizacao2: .asciiz "3 - Digite o valor a ser usado como limiar - Threshold entre 0 - 255. limiar>pixel -> white , limiar<=pixel ->black"
 	mensagem_reset: .asciiz "4 - Resetar Imagem"
 	mensagem_sair: .asciiz "9 - Sair"
 	mensagem_voltar: .asciiz "9 - Voltar"
@@ -75,10 +76,70 @@ syscall
 li $v0,5 #Pega o imput do usuario
 syscall 
 beq $v0,1,menu_blur
+beq $v0,3,binarizacao_prep
 beq $v0,4,image_prep
 beq $v0,9,quit
 bne $v0,9,menu
 
+binarizacao_prep: #Preparacao de variaveis para chamar a funcao de binarizacao
+
+li $v0,4
+la $a0,mensagem_binarizacao2
+syscall
+
+la $a0,quebra_de_linha
+syscall
+
+li $v0,5 #Pega o imput do usuario
+syscall
+add $t6,$v0,$zero
+lw $a3 ,memoria# a1 contem o endereco do heap que sera visto em tela
+lw $a2 ,memoria2# a2 contem o endereco do heap no qual a imagem original esta localizada
+lw $t5,screen_size #a3 contem o numero de bits a serem lidos
+j binarizacao
+
+
+binarizacao:
+
+la $t0,buffer #T0 recebe o endereco da variavel usada como buffer
+
+
+lbu $t1,0($a3)#Pixel Azul
+lbu $t2,-1($a3)#Pixel inutilizado
+lbu $t3,-2($a3)#Pixel vermelho
+lbu $t4,-3($a3)#Pixel verde
+
+add $t1,$t1,$t2
+add $t1,$t1,$t3
+add $t1,$t1,$t4 # t1 = t1+t2+t3+t4
+div $t1,$t1,4
+
+bge $t1,$t6,to_black
+blt $t1,$t6,to_white
+continue:
+
+
+
+sb $t1,0($t0)
+sb $t1,3($t0)
+sb $t1,2($t0)
+sb $t1,1($t0)
+
+
+lw $t0,buffer
+sw $t0,0($a3)
+addi $a3,$a3,-4 #Decrementa para o prox pixel
+addi $t5,$t5,-1 # Numero de vezes que o loop sera executado
+beq $t5,$zero,menu
+j binarizacao
+
+to_black:
+addi $t1,$zero,0
+j continue
+
+to_white:
+addi $t1,$zero,255
+j continue
 
 image_prep:
 
@@ -148,10 +209,6 @@ jr $ra
 
 ######################3
 blur: 
-
-# a0= endereco da memoria em que a imagem esta armazenada,heap
-
-# a0= endereco da memoria em que a imagem esta armazenada,heap
 
 
 la $t0,buffer #T0 recebe o endereco da variavel usada como buffer
