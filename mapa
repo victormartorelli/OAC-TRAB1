@@ -4,14 +4,20 @@
 	largura: .word 2048#tamanho da largura para auxiliar na leitura invertida da imagem 0 a 511
 	screen_size: .word 262144#512x512 representa a quantidade de bytes existentes no bitmap display
 	buffer: .word 0 #buffer utilizado pelo mips na leitura do arquivo
+	buffer2: .space 50	
 	nome_da_imagem: .asciiz "img.bmp"
 	mensagem_erro_ao_abrir_imagem: .asciiz "Nao foi possivel abrir a imgem.Verifique se ela se encontra no mesmo diretorio que o executavel do mars"
 	mensagem_blur: .asciiz "1 - Aplicar blur"
 	mensagem_blur2: .asciiz "Escolha a intensidade do blur 1-5 * Quanto maior a intensidade, mais demorado"
 	mensagem_edge: .asciiz "2 - Aplicar edge extractor"
+	mensagem_edge2: .asciiz "2 - Forneca o peso para ser utilizado como limiar na extracao de bordas"
 	mensagem_binarizacao: .asciiz "3 - Aplicar Binarizacao por limiar"
 	mensagem_binarizacao2: .asciiz "3 - Digite o valor a ser usado como limiar - Threshold entre 0 - 255. limiar>pixel -> white , limiar<=pixel ->black"
 	mensagem_reset: .asciiz "4 - Resetar Imagem"
+	mensagem_save: .asciiz "5 - Salvar imagem com as modificacoes atuais"
+	mensagem_save2: .asciiz "5 - Digite o nome do arquivo a ser salvo junto com a extensao(Max 50 caracteres) Ex : teste.bmp"
+	mensagem_save3: .asciiz "Criando imagem..."
+	mensagem_save4: .asciiz "Imagem criada com sucesso\n"
 	mensagem_sair: .asciiz "9 - Sair"
 	mensagem_voltar: .asciiz "9 - Voltar"
 	quebra_de_linha: .asciiz "\n"
@@ -24,6 +30,9 @@ main:
 lw $s0,memoria2 #endereço base do heap
 lw $s3,memoria #endereço base do heap
 lw $s1,screen_size#Tamanho de bytes do display
+
+
+
 sub $s0,$s0,72 #desconta do endereco inicial do heap a quantidade de bytes utiliza para header
 sub $s3,$s3,72 #desconta do endereco inicial do heap a quantidade de bytes utiliza para header
 lw $t2,largura#variavel que identifica a base da lateral esquerda de cada linha
@@ -64,6 +73,13 @@ la $a0,quebra_de_linha
 syscall
 
 li $v0,4
+la $a0,mensagem_save
+syscall
+
+la $a0,quebra_de_linha
+syscall
+
+li $v0,4
 la $a0,mensagem_sair
 syscall
 
@@ -76,10 +92,164 @@ syscall
 li $v0,5 #Pega o imput do usuario
 syscall 
 beq $v0,1,menu_blur
+beq $v0,2,edge_prep
 beq $v0,3,binarizacao_prep
 beq $v0,4,image_prep
+beq $v0,5,save_image
 beq $v0,9,quit
 bne $v0,9,menu
+
+save_image:
+li $v0,4
+la $a0,mensagem_save2
+syscall
+
+la $a0,quebra_de_linha
+syscall
+
+li $v0,8 #Pega o imput do usuario
+la $a0, buffer2  # buffer que armazenara a string
+li $a1,50    # numero maximo de caracteres a serem lidos
+syscall 
+
+la $t0,buffer2
+addi $t1,$zero,0
+add $t2,$zero,'\0'
+conta_elementos_buffer:
+    lb   $a0,0($t0)
+    beqz $a0,done
+    addi $t0,$t0,1
+    addi $t1,$t1,1
+    j     conta_elementos_buffer
+done:
+la $t0,buffer2
+addi $t1,$t1,-1
+add $t0,$t0,$t1
+sb $t2,0($t0)
+#$t1 = quantidade de caracteres da string digitada pelo usuario
+
+
+# Open (for writing) a file that does not exist
+  li   $v0, 13       # system call for open file
+  la   $a0, buffer2    # output file name
+  li   $a1, 1        # Open for writing (flags are 0: read, 1: write)
+  li   $a2, 0        # mode is ignored
+  syscall           # open a file (file descript
+  
+  move $s4, $v0      # save the file descriptor 
+  
+  li $v0,4
+  la $a0,mensagem_save3
+  syscall
+
+ 
+
+  la $a0,quebra_de_linha
+  syscall      
+   
+   #prepara save_image_loop
+   	move $a0, $s4     # file descriptor
+	la $a1, buffer #local de onde o pixel sera lido
+	li $a2 ,3 #determina a largura do buffer,ou seja, 3 caracteres serao lidos por vez
+	lw $a3,screen_size#quantidade maxima de bits a serem lidos
+	lw $t1,memoria #copia s0 pra t1.Agora t1 contem o endereco base do heap
+	lw $t5,largura#Tamanho da largura do bitmap display
+	addi $t6,$zero,0
+  	lw $t4,screen_size
+  	addi $t4,$t4,18#extra bytes for header
+  	la $t3,buffer   
+
+  j set_largura2
+############################
+save_image_loop:
+ lw $t2,0($t1)
+ sw $t2,0($t3)
+ 
+addi $t5,$t5,-4
+
+  li   $v0, 15       # system call for write to file
+  syscall            # write to file
+
+
+addi $t1,$t1,4 #Incrementa a posicao do heap
+addi $t4,$t4,-1		# decrementa a quantidade de bytes a serem lidos
+beq $t4,$zero,save_image_close
+beq $t5,$zero,set_largura2 
+
+j save_image_loop
+###########################
+set_largura2:
+	lw $t5,largura#Tamanho da largura do bitmap display
+	move $t1, $s3 #recupera o endereço base do heap
+	addi $t6,$t6,2048
+	sub $t1,$t1,$t6
+j save_image_loop
+
+
+save_image_close:
+
+  li $v0,4
+  la $a0,mensagem_save4
+  syscall
+
+
+ # Close the file 
+  li   $v0, 16       # system call for close file
+  move $a0, $s4      # file descriptor to close
+  syscall            # close file
+
+j menu
+
+edge_prep:
+li $v0,4
+la $a0,mensagem_edge2
+syscall
+
+la $a0,quebra_de_linha
+syscall
+
+li $v0,5 #Pega o imput do usuario
+syscall
+add $t6,$v0,$zero
+
+lw $a3 ,memoria# a1 contem o endereco do heap que sera visto em tela
+addi $a3,$a3,-2560# Pula o cabecalho para funcao nao baguncar os dados que nao sao pixels
+lw $a2 ,memoria2# a2 contem o endereco do heap no qual a imagem original esta localizada
+lw $t5,screen_size #a3 contem o numero de bits a serem lidos
+j edge
+
+edge:
+
+la $t0,buffer #T0 recebe o endereco da variavel usada como buffer
+
+
+lbu $t1,0($a3)#Pixel Azul
+lbu $t2,-1($a3)#Pixel inutilizado
+lbu $t3,-2($a3)#Pixel vermelho
+lbu $t4,-3($a3)#Pixel verde
+
+add $t1,$t1,$t2
+add $t1,$t1,$t3
+add $t1,$t1,$t4 # t1 = t1+t2+t3+t4
+div $t1,$t1,4
+
+
+
+
+
+sb $t1,0($t0)
+sb $t1,3($t0)
+sb $t1,2($t0)
+sb $t1,1($t0)
+
+
+lw $t0,buffer
+sw $t0,0($a3)
+addi $a3,$a3,-4 #Decrementa para o prox pixel
+addi $t5,$t5,-1 # Numero de vezes que o loop sera executado
+beq $t5,$zero,menu
+j edge
+
 
 binarizacao_prep: #Preparacao de variaveis para chamar a funcao de binarizacao
 
@@ -94,6 +264,7 @@ li $v0,5 #Pega o imput do usuario
 syscall
 add $t6,$v0,$zero
 lw $a3 ,memoria# a1 contem o endereco do heap que sera visto em tela
+addi $a3,$a3,-2560# Pula o cabecalho para funcao nao baguncar os dados que nao sao pixels
 lw $a2 ,memoria2# a2 contem o endereco do heap no qual a imagem original esta localizada
 lw $t5,screen_size #a3 contem o numero de bits a serem lidos
 j binarizacao
@@ -117,8 +288,6 @@ div $t1,$t1,4
 bge $t1,$t6,to_black
 blt $t1,$t6,to_white
 continue:
-
-
 
 sb $t1,0($t0)
 sb $t1,3($t0)
@@ -181,6 +350,7 @@ prepara_blur:
 #Prepara blur
 
 move $t6,$s3 #copia s0 pra a1.Agora a1 contem o endereco base do heap
+addi $t6,$t6,-2560# Pula o cabecalho para funcao nao baguncar os dados que nao sao pixels
 lw $t7,screen_size #t2 contem o numero de bits a serem lidos
 addi $a3,$a3,-1 # Numero de vezes que a intensidade obriga a funcao a se repetir
 
